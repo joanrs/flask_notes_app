@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ category.name }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 offset-md-3">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h3><i class="fas fa-edit"></i> Edit Category</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('categories.edit_category', category_id=category.id) }}">
+                    <div class="mb-3">
+                        <label for="name" class="form-label">Category Name</label>
+                        <input type="text" class="form-control" id="name" name="name" value="{{ category.name }}"
+                            required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="color" class="form-label">Color</label>
+                        <input type="color" class="form-control form-control-color" id="color" name="color"
+                            value="{{ category.color }}" title="Choose category color">
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Update Category
+                        </button>
+                        <div>
+                            <a href="{{ url_for('categories.list_categories') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <a href="{{ url_for('categories.list_categories') }}" class="btn btn-outline-primary ms-2">
+                                <i class="fas fa-arrow-left"></i> Back to Categories
+                            </a>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+
+{% block title %}Create Note{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card">
+                <div class="card-header">
+                    <h4><i class="fas fa-plus"></i> Create New Note</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('notes.create_note') }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title</label>
+                            <input type="text" class="form-control" id="title" name="title" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="content" class="form-label">Content</label>
+                            <textarea class="form-control" id="content" name="content" rows="6" required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="category_id" class="form-label">Category</label>
+                            <select class="form-select rounded-3" id="category_id" name="category_id" required>
+                                {% for category in categories %}
+                                <option value="{{ category.id }}">{{ category.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="form-check form-switch p-3 bg-light rounded-3">
+                                <input class="form-check-input ms-0" type="checkbox" id="is_public" name="is_public">
+                                <label class="form-check-label ms-2 fw-bold" for="is_public">
+                                    <i class="fas fa-globe-americas text-primary me-1"></i> Conocimiento Público
+                                </label>
+                                <div class="small text-muted ms-4">Si se activa, otros usuarios podrán ver esta nota en
+                                    el Discovery Feed.</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="attachments" class="form-label">Multimedia y Adjuntos</label>
+                            <div class="input-group">
+                                <input type="file" class="form-control rounded-start-3" id="attachments"
+                                    name="attachments" multiple accept=".png,.jpg,.jpeg,.gif,.pdf,.txt,.doc,.docx">
+                                <button class="btn btn-outline-secondary rounded-end-3" type="button"
+                                    id="clear-files">Limpiar</button>
+                            </div>
+                            <small class="text-muted">Tip: Las imágenes aparecerán en el feed estilo Instagram.</small>
+
+                            <div id="preview-container" class="row mt-3 g-3"></div>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('notes.notes_table') }}"
+                                class="btn btn-light rounded-pill px-4">Cancelar</a>
+                            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Guardar
+                                Conocimiento</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const fileInput = document.getElementById('attachments');
+        const previewContainer = document.getElementById('preview-container');
+        const clearBtn = document.getElementById('clear-files');
+
+        // DataTransfer object to hold all files
+        const dt = new DataTransfer();
+
+        fileInput.addEventListener('change', function (e) {
+            // Add new files to the DataTransfer object
+            for (let i = 0; i < this.files.length; i++) {
+                let file = this.files[i];
+
+                // Optional: avoid adding exact duplicates by name and size?
+                // For now, let's just add everything.
+                dt.items.add(file);
+            }
+
+            // Update the input's files with the new set
+            this.files = dt.files;
+
+            // Update previews
+            updatePreviews();
+        });
+
+        clearBtn.addEventListener('click', function () {
+            dt.items.clear();
+            fileInput.files = dt.files;
+            updatePreviews();
+        });
+
+        function updatePreviews() {
+            previewContainer.innerHTML = '';
+
+            for (let i = 0; i < dt.files.length; i++) {
+                const file = dt.files[i];
+                const reader = new FileReader();
+
+                const col = document.createElement('div');
+                col.className = 'col-md-3 position-relative';
+
+                const card = document.createElement('div');
+                card.className = 'card h-100 shadow-sm';
+
+                // Remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 m-1 rounded-circle';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeBtn.style.zIndex = '10';
+                removeBtn.title = 'Remove file';
+                removeBtn.onclick = function (e) {
+                    e.preventDefault();
+                    removeFile(i);
+                };
+
+                col.appendChild(removeBtn);
+
+                // Preview logic
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.className = 'card-img-top';
+                    img.style.height = '120px';
+                    img.style.objectFit = 'cover';
+
+                    reader.onload = function (e) {
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                    card.appendChild(img);
+                } else {
+                    const iconDiv = document.createElement('div');
+                    iconDiv.className = 'card-body text-center d-flex flex-column justify-content-center align-items-center';
+                    iconDiv.style.height = '120px';
+                    iconDiv.style.backgroundColor = '#f8f9fa';
+
+                    let iconClass = 'fa-file';
+                    if (file.type === 'application/pdf') iconClass = 'fa-file-pdf text-danger';
+                    else if (file.type.includes('word') || file.name.endsWith('.doc') || file.name.endsWith('.docx')) iconClass = 'fa-file-word text-primary';
+                    else if (file.type.includes('text') || file.name.endsWith('.txt')) iconClass = 'fa-file-alt text-secondary';
+
+                    iconDiv.innerHTML = `<i class="fas ${iconClass} fa-3x mb-2"></i>`;
+                    card.appendChild(iconDiv);
+                }
+
+                const cardBody = document.createElement('div');
+                cardBody.className = 'card-body p-2';
+                cardBody.innerHTML = `<p class="card-text small text-truncate text-center" title="${file.name}">${file.name}</p>`;
+
+                card.appendChild(cardBody);
+                col.appendChild(card);
+                previewContainer.appendChild(col);
+            }
+        }
+
+        function removeFile(index) {
+            dt.items.remove(index);
+            fileInput.files = dt.files;
+            updatePreviews();
+        }
+    });
+</script>
+</div>
+</div>
+</div>
+</div>
+</div>
+{% endblock %}

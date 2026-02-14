@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}Mis Tareas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .task-card {
+        border-radius: 12px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        margin-bottom: 1rem;
+    }
+
+    .task-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .priority-3 {
+        border-left: 5px solid #dc3545;
+    }
+
+    .priority-2 {
+        border-left: 5px solid #ffc107;
+    }
+
+    .priority-1 {
+        border-left: 5px solid #0dcaf0;
+    }
+
+    .completed {
+        opacity: 0.6;
+        text-decoration: line-through;
+    }
+
+    .due-date {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 20px;
+    }
+
+    @media (max-width: 575.98px) {
+        .task-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 15px;
+        }
+
+        .task-header .btn {
+            width: 100%;
+        }
+
+        .task-card .card-body {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+
+        .task-card .form-check {
+            margin-bottom: 10px;
+        }
+
+        .task-card .ms-auto {
+            margin-left: 0 !important;
+            margin-top: 10px;
+            align-self: flex-end;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-center mb-4 task-header">
+            <h2 class="fw-bold"><i class="fas fa-check-circle text-primary me-2"></i>Mis Tareas</h2>
+            <button class="btn btn-primary rounded-pill px-4" data-bs-toggle="modal" data-bs-target="#addTaskModal">
+                <i class="fas fa-plus me-1"></i> Nueva Tarea
+            </button>
+        </div>
+
+        <div id="taskList">
+            {% if not tasks %}
+            <div class="text-center py-5">
+                <i class="fas fa-clipboard-list fa-4x text-light mb-3"></i>
+                <p class="text-muted">No tienes tareas pendientes. ¡Relájate!</p>
+            </div>
+            {% else %}
+            {% for task in tasks %}
+            <div class="card task-card priority-{{ task.priority }} {% if task.status == 'completed' %}completed{% endif %}"
+                id="task-{{ task.id }}">
+                <div class="card-body d-flex align-items-center">
+                    <div class="form-check me-3">
+                        <input class="form-check-input task-toggle" type="checkbox" data-id="{{ task.id }}" {% if
+                            task.status=='completed' %}checked{% endif %}>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-1">{{ task.title }}</h5>
+                        {% if task.description %}
+                        <p class="card-text text-muted mb-1 small">{{ task.description }}</p>
+                        {% endif %}
+                        <div class="d-flex align-items-center gap-3">
+                            {% if task.due_date %}
+                            <span class="due-date">
+                                <i class="far fa-calendar-alt me-1"></i> {{ task.due_date.strftime('%d %b, %H:%M') }}
+                            </span>
+                            {% endif %}
+                            <span class="status-badge bg-light text-dark border">
+                                {% if task.priority == 3 %}Alta{% elif task.priority == 2 %}Media{% else %}Baja{% endif
+                                %}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="ms-auto">
+                        <form action="{{ url_for('tasks.delete_task', task_id=task.id) }}" method="POST"
+                            class="d-inline">
+                            <button type="submit" class="btn btn-link text-danger p-0"
+                                onclick="return confirm('¿Eliminar tarea?')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 bg-light p-3">
+            <h5 class="fw-bold mb-3">Resumen de Hoy</h5>
+            <div class="d-flex justify-content-between mb-2">
+                <span>Pendientes:</span>
+                <span class="badge bg-warning text-dark px-3 rounded-pill">{{ tasks|rejectattr('status', 'equalto',
+                    'completed')|list|length }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+                <span>Completadas:</span>
+                <span class="badge bg-success px-3 rounded-pill">{{ tasks|selectattr('status', 'equalto',
+                    'completed')|list|length }}</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Task Modal -->
+<div class="modal fade" id="addTaskModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Añadir Tarea</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('tasks.create_task') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Título</label>
+                        <input type="text" name="title" class="form-control rounded-3" required autofocus
+                            placeholder="¿Qué hay que hacer?">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descripción (opcional)</label>
+                        <textarea name="description" class="form-control rounded-3" rows="2"></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha Límite</label>
+                            <input type="datetime-local" name="due_date" class="form-control rounded-3">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Prioridad</label>
+                            <select name="priority" class="form-select rounded-3">
+                                <option value="1">Baja</option>
+                                <option value="2">Media</option>
+                                <option value="3">Alta</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4"
+                        data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.task-toggle').forEach(checkbox => {
+        checkbox.addEventListener('change', async function () {
+            const taskId = this.dataset.id;
+            const card = document.getElementById(`task-${taskId}`);
+
+            try {
+                const response = await fetch(`/tasks/${taskId}/toggle`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                if (data.status === 'completed') {
+                    card.classList.add('completed');
+                } else {
+                    card.classList.remove('completed');
+                }
+                location.reload(); // Quick refresh to update counters
+            } catch (error) {
+                console.error('Error toggling task:', error);
+                this.checked = !this.checked;
+            }
+        });
+    });
+</script>
+{% endblock %}

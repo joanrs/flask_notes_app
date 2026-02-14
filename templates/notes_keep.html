@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}My Notes{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Masonry Layout */
+    .masonry-grid {
+        column-count: 1;
+        column-gap: 1rem;
+    }
+
+    @media (min-width: 576px) {
+        .masonry-grid {
+            column-count: 2;
+        }
+    }
+
+    @media (min-width: 992px) {
+        .masonry-grid {
+            column-count: 3;
+        }
+    }
+
+    @media (min-width: 1200px) {
+        .masonry-grid {
+            column-count: 4;
+        }
+    }
+
+    /* Card Styling */
+    .note-card {
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        break-inside: avoid;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        position: relative;
+        background-color: #fff;
+        /* Fallback */
+        color: #212529;
+    }
+
+    .note-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .note-card-body {
+        padding: 1rem;
+    }
+
+    .note-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+    }
+
+    .note-title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .note-content {
+        font-size: 0.9rem;
+        line-height: 1.5;
+        margin-bottom: 0.75rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 5;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* Attachments Preview */
+    .attachments-preview {
+        display: flex;
+        gap: 0.25rem;
+        margin-bottom: 0.75rem;
+        overflow-x: auto;
+        padding-bottom: 2px;
+    }
+
+    .attachment-thumb {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        object-fit: cover;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        flex-shrink: 0;
+    }
+
+    .attachment-file {
+        width: 40px;
+        height: 40px;
+        border-radius: 4px;
+        background: rgba(255, 255, 255, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #555;
+        font-size: 1rem;
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        flex-shrink: 0;
+        position: relative;
+    }
+
+    .file-ext {
+        position: absolute;
+        bottom: 1px;
+        right: 1px;
+        font-size: 0.5rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        background: rgba(255, 255, 255, 0.8);
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+
+    /* Footer */
+    .note-footer {
+        padding: 0.75rem 1rem;
+        background: rgba(0, 0, 0, 0.03);
+        border-top: 1px solid rgba(0, 0, 0, 0.05);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .category-badge-pill {
+        font-size: 0.7rem;
+        font-weight: 600;
+        padding: 0.2rem 0.6rem;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.1);
+        color: inherit;
+    }
+
+    .action-btn {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: inherit;
+        opacity: 0.7;
+        transition: all 0.2s;
+        border: none;
+        background: transparent;
+    }
+
+    .action-btn:hover {
+        background: rgba(0, 0, 0, 0.1);
+        opacity: 1;
+    }
+
+    .action-btn.like.active {
+        color: #dc3545;
+        opacity: 1;
+    }
+
+    /* Search Input Wrapper */
+    .search-input {
+        border-radius: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app" v-cloak class="pb-5">
+    <!-- Header Section (Simplified) -->
+    <div class="d-flex justify-content-between align-items-center mb-4 mt-3">
+        <div>
+            <h2 class="fw-bold mb-0">My Notes</h2>
+        </div>
+        <div>
+            <a href="{{ url_for('notes.create_note') }}" class="btn btn-primary btn-sm rounded-pill px-3">
+                <i class="fas fa-plus me-1"></i> New
+            </a>
+        </div>
+    </div>
+
+    <!-- Controls Section -->
+    <div class="row g-2 mb-4">
+        <div class="col-md-5">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-white border-end-0 rounded-start-pill"><i
+                        class="fas fa-search text-muted"></i></span>
+                <input type="text" class="form-control border-start-0 rounded-end-pill" placeholder="Search notes..."
+                    v-model="searchQuery">
+            </div>
+        </div>
+        <div class="col-md-3">
+            <select class="form-select form-select-sm rounded-pill" v-model="selectedCategory">
+                <option value="">All Categories</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4 d-flex justify-content-end">
+            <div class="btn-group btn-group-sm rounded-pill shadow-sm" role="group">
+                <button class="btn btn-outline-secondary" :class="{active: sortBy === 'date'}" @click="sortBy = 'date'"
+                    title="Date"><i class="fas fa-clock"></i></button>
+                <button class="btn btn-outline-secondary" :class="{active: sortBy === 'title'}"
+                    @click="sortBy = 'title'" title="Title"><i class="fas fa-font"></i></button>
+                <button class="btn btn-outline-secondary" :class="{active: sortBy === 'likes'}"
+                    @click="sortBy = 'likes'" title="Likes"><i class="fas fa-heart"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notes Masonry Grid -->
+    <div id="notes-container">
+        {% raw %}
+        <div class="masonry-grid">
+            <div v-for="note in filteredNotes" :key="note.id" class="note-card" @click="viewNote(note.id)"
+                :style="{backgroundColor: note.category.color ? hexToRgba(note.category.color, 0.2) : '#fff'}"
+                style="cursor: pointer;">
+
+                <div class="note-card-body">
+                    <div class="note-header">
+                        <h5 class="note-title">{{ note.title }}</h5>
+                        <div class="dropdown" @click.stop>
+                            <button class="action-btn" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v small"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="font-size: 0.9rem;">
+                                <li><a class="dropdown-item" :href="'/notes/' + note.id + '/edit'">Edit</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><button class="dropdown-item text-danger"
+                                        @click="confirmDelete(note)">Delete</button></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="note-content">
+                        {{ note.content_preview }}
+                    </div>
+
+                    <!-- Attachments Preview -->
+                    <div v-if="note.attachments && note.attachments.length > 0" class="attachments-preview" @click.stop>
+                        <div v-for="att in note.attachments.slice(0, 4)" :key="att.id" title="View Attachment">
+                            <img v-if="isImage(att.filename)" :src="'/uploads/' + att.filename" class="attachment-thumb"
+                                loading="lazy" @click="viewNote(note.id)">
+                            <div v-else class="attachment-file" @click="viewNote(note.id)">
+                                <i :class="getFileIcon(att.filename)"></i>
+                                <span class="file-ext">{{ getExtension(att.filename) }}</span>
+                            </div>
+                        </div>
+                        <div v-if="note.attachments.length > 4" class="attachment-file fw-bold"
+                            style="font-size: 0.8rem;">
+                            +{{ note.attachments.length - 4 }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="note-footer">
+                    <span class="category-badge-pill">
+                        {{ note.category.name }}
+                    </span>
+
+                    <div class="d-flex align-items-center gap-1">
+                        <button class="action-btn like" :class="{active: note.likes_count > 0}"
+                            @click.stop="toggleLike(note)">
+                            <i :class="note.likes_count > 0 ? 'fas fa-heart' : 'far fa-heart'"></i>
+                            <span v-if="note.likes_count > 0" class="ms-1 small fw-bold">{{ note.likes_count }}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endraw %}
+
+        <!-- Empty State -->
+        {% raw %}
+        <div v-if="filteredNotes.length === 0" class="text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-wind fa-4x text-light-gray" style="color: #e5e7eb;"></i>
+            </div>
+            <h3 class="fw-bold text-muted">No notes found</h3>
+            <p class="text-muted">Try adjusting your filters or create a new note.</p>
+        </div>
+        {% endraw %}
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg rounded-4">
+                <div class="modal-body p-4 text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-trash-alt fa-3x text-danger opacity-50"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Delete Note?</h4>
+                    {% raw %}
+                    <p class="text-muted mb-4">Are you sure you want to delete "<strong><span
+                                v-text="noteToDelete ? noteToDelete.title : ''"></span></strong>"? This action cannot be
+                        undone.</p>
+                    {% endraw %}
+                    <div class="d-flex justify-content-center gap-2">
+                        <button type="button" class="btn btn-light rounded-pill px-4"
+                            data-bs-dismiss="modal">Cancel</button>
+                        {% raw %}
+                        <button type="button" class="btn btn-danger rounded-pill px-4"
+                            @click="deleteNote">Delete</button>
+                        {% endraw %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Pasar datos de Flask a JavaScript -->
+<script type="application/json" id="notes-data">
+{{ notes|tojson|safe }}
+</script>
+
+<script type="application/json" id="categories-data">
+{{ categories|tojson|safe }}
+</script>
+
+<!-- Cargar el archivo JavaScript externo -->
+<script src="{{ url_for('static', filename='js/notes_keep.js') }}"></script>
+{% endblock %}

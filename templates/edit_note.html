@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ note.title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h3><i class="fas fa-edit"></i> Edit Note</h3>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('notes.edit_note', note_id=note.id) }}"
+                    enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="title" class="form-label">Title</label>
+                        <input type="text" class="form-control" id="title" name="title" value="{{ note.title }}"
+                            required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="content" class="form-label">Content</label>
+                        <textarea class="form-control" id="content" name="content" rows="10"
+                            required>{{ note.content }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="category_id" class="form-label">Category</label>
+                        <select class="form-select rounded-3" id="category_id" name="category_id" required>
+                            {% for category in categories %}
+                            <option value="{{ category.id }}" {% if category.id==note.category_id %}selected{% endif %}>
+                                {{ category.name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch p-3 bg-light rounded-3">
+                            <input class="form-check-input ms-0" type="checkbox" id="is_public" name="is_public" {% if
+                                note.is_public %}checked{% endif %}>
+                            <label class="form-check-label ms-2 fw-bold" for="is_public">
+                                <i class="fas fa-globe-americas text-primary me-1"></i> Conocimiento Público
+                            </label>
+                            <div class="small text-muted ms-4">Si se activa, otros usuarios podrán ver esta nota en el
+                                Discovery Feed.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="attachments" class="form-label">Añadir más Multimedia/Adjuntos</label>
+                        <div class="input-group">
+                            <input class="form-control rounded-start-3" type="file" id="attachments" name="attachments"
+                                multiple accept=".png,.jpg,.jpeg,.gif,.pdf,.txt,.doc,.docx">
+                            <button class="btn btn-outline-secondary rounded-end-3" type="button"
+                                id="clear-files">Limpiar</button>
+                        </div>
+                        <div id="preview-container" class="row mt-3 g-3"></div>
+                    </div>
+
+                    {% if note.attachments %}
+                    <div class="mb-4">
+                        <h5>Current Attachments</h5>
+                        <div class="row">
+                            {% for attachment in note.attachments %}
+                            <div class="col-md-3 mb-3">
+                                <div class="card h-100">
+                                    {% if attachment.file_type.startswith('image/') %}
+                                    <img src="{{ url_for('notes.download_file', filename=attachment.filename) }}"
+                                        class="card-img-top attachment-thumbnail" alt="{{ attachment.filename }}"
+                                        style="height: 120px; object-fit: cover;">
+                                    {% else %}
+                                    <div class="card-body text-center d-flex flex-column justify-content-center align-items-center"
+                                        style="height: 120px; background-color: #f8f9fa;">
+                                        {% if attachment.filename.endswith('.pdf') %}
+                                        <i class="fas fa-file-pdf fa-3x text-danger mb-2"></i>
+                                        {% elif attachment.filename.endswith('.doc') or
+                                        attachment.filename.endswith('.docx') %}
+                                        <i class="fas fa-file-word fa-3x text-primary mb-2"></i>
+                                        {% elif attachment.filename.endswith('.txt') %}
+                                        <i class="fas fa-file-alt fa-3x text-secondary mb-2"></i>
+                                        {% else %}
+                                        <i class="fas fa-file fa-3x text-muted mb-2"></i>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                    <div class="card-body p-2">
+                                        <p class="card-text small text-truncate text-center"
+                                            title="{{ attachment.filename }}">{{ attachment.filename }}</p>
+                                    </div>
+                                    <div class="card-footer bg-white border-top-0 p-2">
+                                        <button form="delete-form-{{ attachment.id }}" type="submit"
+                                            class="btn btn-sm btn-outline-danger w-100">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-flex justify-content-between">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Update Note
+                        </button>
+                        <div>
+                            <a href="{{ url_for('notes.view_note', note_id=note.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                            <a href="{{ url_for('notes.notes_table') }}" class="btn btn-outline-primary ms-2">
+                                <i class="fas fa-arrow-left"></i> Back to Notes
+                            </a>
+                        </div>
+                    </div>
+                </form>
+
+                {# Separate delete forms for existing attachments #}
+                {% if note.attachments %}
+                {% for attachment in note.attachments %}
+                <form id="delete-form-{{ attachment.id }}"
+                    action="{{ url_for('notes.delete_attachment', note_id=note.id, attachment_id=attachment.id) }}"
+                    method="POST" onsubmit="return confirm('Delete this attachment?');" style="display: none;">
+                </form>
+                {% endfor %}
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const fileInput = document.getElementById('attachments');
+        const previewContainer = document.getElementById('preview-container');
+        const clearBtn = document.getElementById('clear-files');
+
+        // DataTransfer object to hold all files
+        const dt = new DataTransfer();
+
+        fileInput.addEventListener('change', function (e) {
+            // Add new files to the DataTransfer object
+            for (let i = 0; i < this.files.length; i++) {
+                let file = this.files[i];
+                dt.items.add(file);
+            }
+
+            // Update the input's files with the new set
+            this.files = dt.files;
+
+            // Update previews
+            updatePreviews();
+        });
+
+        clearBtn.addEventListener('click', function () {
+            dt.items.clear();
+            fileInput.files = dt.files;
+            updatePreviews();
+        });
+
+        function updatePreviews() {
+            previewContainer.innerHTML = '';
+
+            for (let i = 0; i < dt.files.length; i++) {
+                const file = dt.files[i];
+                const reader = new FileReader();
+
+                const col = document.createElement('div');
+                col.className = 'col-md-3 position-relative';
+
+                const card = document.createElement('div');
+                card.className = 'card h-100 shadow-sm';
+
+                // Remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 m-1 rounded-circle';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeBtn.style.zIndex = '10';
+                removeBtn.title = 'Remove file';
+                removeBtn.onclick = function (e) {
+                    e.preventDefault();
+                    removeFile(i);
+                };
+
+                col.appendChild(removeBtn);
+
+                // Preview logic
+                if (file.type.startsWith('image/')) {
+                    const img = document.createElement('img');
+                    img.className = 'card-img-top';
+                    img.style.height = '120px';
+                    img.style.objectFit = 'cover';
+
+                    reader.onload = function (e) {
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                    card.appendChild(img);
+                } else {
+                    const iconDiv = document.createElement('div');
+                    iconDiv.className = 'card-body text-center d-flex flex-column justify-content-center align-items-center';
+                    iconDiv.style.height = '120px';
+                    iconDiv.style.backgroundColor = '#f8f9fa';
+
+                    let iconClass = 'fa-file';
+                    if (file.type === 'application/pdf') iconClass = 'fa-file-pdf text-danger';
+                    else if (file.type.includes('word') || file.name.endsWith('.doc') || file.name.endsWith('.docx')) iconClass = 'fa-file-word text-primary';
+                    else if (file.type.includes('text') || file.name.endsWith('.txt')) iconClass = 'fa-file-alt text-secondary';
+
+                    iconDiv.innerHTML = `<i class="fas ${iconClass} fa-3x mb-2"></i>`;
+                    card.appendChild(iconDiv);
+                }
+
+                const cardBody = document.createElement('div');
+                cardBody.className = 'card-body p-2';
+                cardBody.innerHTML = `<p class="card-text small text-truncate text-center" title="${file.name}">${file.name}</p>`;
+
+                card.appendChild(cardBody);
+                col.appendChild(card);
+                previewContainer.appendChild(col);
+            }
+        }
+
+        function removeFile(index) {
+            dt.items.remove(index);
+            fileInput.files = dt.files;
+            updatePreviews();
+        }
+    });
+</script>
+{% endblock %}

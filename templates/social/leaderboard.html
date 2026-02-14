@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Leaderboard - Red Social de Conocimiento{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-trophy text-warning"></i> Leaderboard de Reputación</h2>
+                <div>
+                    <a href="{{ url_for('social.list_badges') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-award"></i> Ver Badges
+                    </a>
+                </div>
+            </div>
+
+            <!-- Top 3 podium -->
+            {% if users|length >= 3 %}
+            <div class="row mb-5">
+                <div class="col-12">
+                    <div class="d-flex justify-content-center align-items-end" style="height: 300px;">
+                        <!-- 2nd place -->
+                        <div class="text-center me-4" style="margin-bottom: 50px;">
+                            <div class="position-relative">
+                                {% if users[1].profile_pic %}
+                                    <img src="{{ url_for('static', filename='uploads/' + users[1].profile_pic) }}" 
+                                         class="rounded-circle border border-3 border-secondary" width="80" height="80">
+                                {% else %}
+                                    <div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center border border-3 border-secondary" 
+                                         style="width: 80px; height: 80px;">
+                                        <i class="fas fa-user text-white fa-2x"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="position-absolute top-0 start-100 translate-middle">
+                                    <span class="badge bg-secondary rounded-pill">2</span>
+                                </div>
+                            </div>
+                            <h5 class="mt-2">{{ users[1].username }}</h5>
+                            <div class="bg-secondary text-white p-3 rounded" style="height: 100px;">
+                                <div class="fw-bold fs-4">{{ users[1].reputation_points }}</div>
+                                <small>puntos</small>
+                            </div>
+                        </div>
+
+                        <!-- 1st place -->
+                        <div class="text-center me-4">
+                            <div class="position-relative">
+                                {% if users[0].profile_pic %}
+                                    <img src="{{ url_for('static', filename='uploads/' + users[0].profile_pic) }}" 
+                                         class="rounded-circle border border-3 border-warning" width="100" height="100">
+                                {% else %}
+                                    <div class="bg-warning rounded-circle d-inline-flex align-items-center justify-content-center border border-3 border-warning" 
+                                         style="width: 100px; height: 100px;">
+                                        <i class="fas fa-user text-white fa-3x"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="position-absolute top-0 start-100 translate-middle">
+                                    <span class="badge bg-warning rounded-pill">1</span>
+                                </div>
+                            </div>
+                            <h4 class="mt-2">{{ users[0].username }}</h4>
+                            <div class="bg-warning text-dark p-3 rounded" style="height: 150px;">
+                                <i class="fas fa-crown fa-2x mb-2"></i>
+                                <div class="fw-bold fs-3">{{ users[0].reputation_points }}</div>
+                                <small>puntos</small>
+                            </div>
+                        </div>
+
+                        <!-- 3rd place -->
+                        <div class="text-center" style="margin-bottom: 75px;">
+                            <div class="position-relative">
+                                {% if users[2].profile_pic %}
+                                    <img src="{{ url_for('static', filename='uploads/' + users[2].profile_pic) }}" 
+                                         class="rounded-circle border border-3 border-dark" width="70" height="70">
+                                {% else %}
+                                    <div class="bg-dark rounded-circle d-inline-flex align-items-center justify-content-center border border-3 border-dark" 
+                                         style="width: 70px; height: 70px;">
+                                        <i class="fas fa-user text-white"></i>
+                                    </div>
+                                {% endif %}
+                                <div class="position-absolute top-0 start-100 translate-middle">
+                                    <span class="badge bg-dark rounded-pill">3</span>
+                                </div>
+                            </div>
+                            <h6 class="mt-2">{{ users[2].username }}</h6>
+                            <div class="bg-dark text-white p-3 rounded" style="height: 75px;">
+                                <div class="fw-bold">{{ users[2].reputation_points }}</div>
+                                <small>puntos</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Full leaderboard table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Ranking Completo</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Posición</th>
+                                    <th>Usuario</th>
+                                    <th>Reputación</th>
+                                    <th>Notas</th>
+                                    <th>Likes Recibidos</th>
+                                    <th>Comentarios</th>
+                                    <th>Seguidores</th>
+                                    <th>Badges</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr {% if user.id == current_user.id %}class="table-primary"{% endif %}>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <span class="fw-bold me-2">#{{ loop.index }}</span>
+                                            {% if loop.index == 1 %}
+                                                <i class="fas fa-crown text-warning"></i>
+                                            {% elif loop.index == 2 %}
+                                                <i class="fas fa-medal text-secondary"></i>
+                                            {% elif loop.index == 3 %}
+                                                <i class="fas fa-medal text-dark"></i>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if user.profile_pic %}
+                                                <img src="{{ url_for('static', filename='uploads/' + user.profile_pic) }}" 
+                                                     class="rounded-circle me-2" width="40" height="40">
+                                            {% else %}
+                                                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center me-2" 
+                                                     style="width: 40px; height: 40px;">
+                                                    <i class="fas fa-user text-white"></i>
+                                                </div>
+                                            {% endif %}
+                                            <div>
+                                                <a href="{{ url_for('users.user_profile', user_id=user.id) }}" 
+                                                   class="text-decoration-none fw-bold">
+                                                    {{ user.username }}
+                                                    {% if user.id == current_user.id %}
+                                                        <span class="badge bg-primary ms-1">Tú</span>
+                                                    {% endif %}
+                                                </a>
+                                                {% if user.bio %}
+                                                    <div class="small text-muted">{{ user.bio[:50] }}{% if user.bio|length > 50 %}...{% endif %}</div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-warning text-dark fs-6">
+                                            <i class="fas fa-star"></i> {{ user.reputation_points }}
+                                        </span>
+                                    </td>
+                                    <td>{{ user.notes|length }}</td>
+                                    <td>{{ user.get_likes_received() }}</td>
+                                    <td>{{ user.get_comments_made() }}</td>
+                                    <td>{{ user.get_followers_count() }}</td>
+                                    <td>
+                                        {% set user_badges = user.get_badges_list() %}
+                                        {% if user_badges %}
+                                            <div class="d-flex">
+                                                {% for badge in user_badges[:3] %}
+                                                    <i class="{{ badge.icon }} me-1" 
+                                                       style="color: {{ badge.color }};" 
+                                                       title="{{ badge.name }}"></i>
+                                                {% endfor %}
+                                                {% if user_badges|length > 3 %}
+                                                    <span class="badge bg-secondary">+{{ user_badges|length - 3 }}</span>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats summary -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                            <h5>{{ users|length }}</h5>
+                            <small class="text-muted">Usuarios Activos</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-star fa-2x text-warning mb-2"></i>
+                            <h5>{{ users[0].reputation_points if users else 0 }}</h5>
+                            <small class="text-muted">Máxima Reputación</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-trophy fa-2x text-success mb-2"></i>
+                            <h5>
+                                {% set user_position = '?' %}
+                                {% for user in users %}
+                                    {% if user.id == current_user.id %}
+                                        {% set user_position = loop.index %}
+                                    {% endif %}
+                                {% endfor %}
+                                #{{ user_position }}
+                            </h5>
+                            <small class="text-muted">Tu Posición</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-center">
+                        <div class="card-body">
+                            <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                            <h5>{{ current_user.reputation_points }}</h5>
+                            <small class="text-muted">Tu Reputación</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

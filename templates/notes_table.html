@@ -1,0 +1,1270 @@
+{% extends "base.html" %}
+
+{% block title %}Notes - Table View (Vue 3){% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Vue transitions */
+    [v-cloak] {
+        display: none;
+    }
+
+    .fade-enter-active,
+    .fade-leave-active {
+        transition: opacity 0.3s ease;
+    }
+
+    .fade-enter-from,
+    .fade-leave-to {
+        opacity: 0;
+    }
+
+    /* Table styles */
+    .table-hover tbody tr {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .note-title-cell {
+        max-width: 250px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .note-content-cell {
+        max-width: 300px;
+    }
+
+    .note-content-preview {
+        color: #6c757d;
+        font-size: 0.9em;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Action buttons */
+    .action-buttons {
+        white-space: nowrap;
+        opacity: 0.7;
+        transition: opacity 0.2s ease;
+    }
+
+    .table-hover tbody tr:hover .action-buttons {
+        opacity: 1;
+    }
+
+    .btn-table-action {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 5px;
+    }
+
+    /* Category badge */
+    .category-badge-table {
+        font-size: 0.75rem;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-weight: 600;
+        display: inline-block;
+        min-width: 70px;
+        text-align: center;
+    }
+
+    /* Status indicators */
+    .status-indicator {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+
+    .status-new {
+        background-color: #28a745;
+    }
+
+    .status-recent {
+        background-color: #ffc107;
+    }
+
+    .status-old {
+        background-color: #6c757d;
+    }
+
+    /* Filters panel */
+    .filters-panel {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid #dee2e6;
+    }
+
+    .filter-group {
+        margin-bottom: 15px;
+    }
+
+    .filter-label {
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #495057;
+        margin-bottom: 5px;
+        display: block;
+    }
+
+    /* Bulk actions */
+    .bulk-actions-bar {
+        background-color: #e9ecef;
+        border-radius: 8px;
+        padding: 10px 15px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: all 0.3s ease;
+    }
+
+    .bulk-actions-bar.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    /* Empty state */
+    .empty-state-table {
+        padding: 40px 20px;
+        text-align: center;
+        border: 2px dashed #dee2e6;
+        border-radius: 8px;
+        margin: 20px 0;
+    }
+
+    /* Skeleton loading */
+    .skeleton-row {
+        height: 60px;
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s infinite;
+        border-radius: 4px;
+        margin-bottom: 8px;
+    }
+
+    @keyframes loading {
+        0% {
+            background-position: 200% 0;
+        }
+
+        100% {
+            background-position: -200% 0;
+        }
+    }
+
+    /* Responsive table */
+    @media (max-width: 991.98px) {
+
+        .col-md-6,
+        .col-md-8,
+        .col-md-4,
+        .col-md-3 {
+            width: 100% !important;
+        }
+
+        .filters-panel .btn-group {
+            flex-direction: column;
+        }
+
+        .filters-panel .btn-group .btn {
+            border-radius: 8px !important;
+            margin-bottom: 5px;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .header-actions {
+            flex-direction: column;
+            align-items: flex-start !important;
+        }
+
+        .header-actions .btn-group {
+            width: 100%;
+            margin-top: 15px;
+        }
+
+        .table-responsive {
+            border: 0;
+        }
+
+        .table thead {
+            display: none;
+        }
+
+        .table,
+        .table tbody,
+        .table tr,
+        .table td {
+            display: block;
+            width: 100%;
+        }
+
+        .table tr {
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 10px;
+            position: relative;
+            background: #fff;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
+        }
+
+        .table td {
+            text-align: right;
+            padding: 12px 10px 12px 40%;
+            position: relative;
+            border-top: 1px solid #f1f1f1;
+            min-height: 45px;
+        }
+
+        .table td:first-child {
+            border-top: 0;
+            text-align: left;
+            padding-left: 10px;
+        }
+
+        .table td:before {
+            content: attr(data-label);
+            position: absolute;
+            left: 10px;
+            width: 35%;
+            padding-right: 10px;
+            text-align: left;
+            font-weight: 700;
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .table td:first-child:before {
+            content: none;
+        }
+
+        .note-title-cell,
+        .note-content-cell {
+            max-width: 100%;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: flex-end;
+            background: #f8f9fa;
+            margin: 0 -10px -10px -10px;
+            padding: 10px;
+            border-radius: 0 0 12px 12px;
+        }
+    }
+
+    /* Dark mode support */
+    @media (prefers-color-scheme: dark) {
+        .table {
+            color: #e9ecef;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: #2d3748;
+        }
+
+        .filters-panel {
+            background-color: #2d3748;
+            border-color: #4a5568;
+        }
+
+        .bulk-actions-bar {
+            background-color: #2d3748;
+        }
+    }
+
+    /* Sortable headers */
+    .sortable-header {
+        cursor: pointer;
+        user-select: none;
+        transition: color 0.2s ease;
+    }
+
+    .sortable-header:hover {
+        color: #0d6efd;
+    }
+
+    .sortable-header.sort-asc:after {
+        content: " ↑";
+        font-weight: bold;
+    }
+
+    .sortable-header.sort-desc:after {
+        content: " ↓";
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app" v-cloak>
+    <!-- Header -->
+    <div class="row mb-4 header-actions align-items-center">
+        <div class="col-md-6">
+            <h2 class="mb-0 fw-bold">
+                <i class="fas fa-sticky-note text-info me-2"></i>Mis Notas
+            </h2>
+            <p class="text-muted small mb-0">Gestiona tu conocimiento en vista de tabla</p>
+        </div>
+        <div class="col-md-6 text-md-end text-start mt-3 mt-md-0">
+            <div class="btn-group shadow-sm" role="group">
+                <a href="{{ url_for('notes.notes_keep') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-th me-1"></i> Mosaico
+                </a>
+                <a href="{{ url_for('notes.create_note') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i> Nueva Nota
+                </a>
+                <button class="btn btn-outline-secondary" @click="exportTable">
+                    <i class="fas fa-download me-1"></i> Exportar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Bar -->
+    <Transition name="fade">
+        <div v-if="selectedNotes.length > 0" class="bulk-actions-bar">
+            <div>
+                <span class="fw-bold">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <span v-text="selectedNotes.length + ' note(s) selected'"></span>
+                </span>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-sm btn-outline-danger" @click="confirmBulkDelete">
+                    <i class="fas fa-trash me-1"></i> Delete Selected
+                </button>
+                <button class="btn btn-sm btn-outline-secondary" @click="clearSelection">
+                    <i class="fas fa-times me-1"></i> Clear Selection
+                </button>
+            </div>
+        </div>
+    </Transition>
+
+    <!-- Filters Panel -->
+    <div class="filters-panel">
+        <div class="row g-3">
+            <!-- Quick Filters -->
+            <div class="col-md-8">
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="filter-group">
+                            <label class="filter-label">Search Notes</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" class="form-control" placeholder="Search by title or content..."
+                                    v-model="searchQuery" @input="debouncedSearch">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="filter-group">
+                            <label class="filter-label">Category</label>
+                            <select class="form-select" v-model="selectedCategory">
+                                <option value="">All Categories</option>
+                                <option v-for="category in categories" :value="category.id" :key="category.id"
+                                    v-text="category.name">
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="filter-group">
+                            <label class="filter-label">Sort By</label>
+                            <select class="form-select" v-model="sortBy">
+                                <option value="updated_at">Date Updated</option>
+                                <option value="created_at">Date Created</option>
+                                <option value="title">Title</option>
+                                <option value="likes">Likes</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="col-md-4">
+                <div class="d-flex h-100 align-items-end">
+                    <div class="btn-group w-100">
+                        <button class="btn btn-outline-primary" @click="applyFilters">
+                            <i class="fas fa-filter me-1"></i> Apply Filters
+                        </button>
+                        <button class="btn btn-outline-secondary" @click="resetFilters">
+                            <i class="fas fa-redo me-1"></i> Reset
+                        </button>
+                        <button class="btn btn-outline-info" @click="toggleFilters = !toggleFilters">
+                            <i class="fas fa-sliders-h me-1"></i> Advanced
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Filters (Collapsible) -->
+        <Transition name="fade">
+            <div v-if="toggleFilters" class="advanced-filters mt-3 pt-3 border-top">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <div class="filter-group">
+                            <label class="filter-label">Date Range</label>
+                            <select class="form-select" v-model="dateRange">
+                                <option value="">All Time</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month">This Month</option>
+                                <option value="year">This Year</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="filter-group">
+                            <label class="filter-label">Has Attachments</label>
+                            <select class="form-select" v-model="hasAttachments">
+                                <option value="">Any</option>
+                                <option value="yes">With Attachments</option>
+                                <option value="no">Without Attachments</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="filter-group">
+                            <label class="filter-label">Has Likes</label>
+                            <select class="form-select" v-model="hasLikes">
+                                <option value="">Any</option>
+                                <option value="yes">With Likes</option>
+                                <option value="no">Without Likes</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="filter-group">
+                            <label class="filter-label">Items Per Page</label>
+                            <select class="form-select" v-model="itemsPerPage" @change="changeItemsPerPage">
+                                <option value="10">10 items</option>
+                                <option value="25">25 items</option>
+                                <option value="50">50 items</option>
+                                <option value="100">100 items</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+    </div>
+
+    <!-- Loading State -->
+    <div v-if="loading">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th width="50"></th>
+                        <th>Title</th>
+                        <th>Content</th>
+                        <th>Category</th>
+                        <th>Attachments</th>
+                        <th>Likes</th>
+                        <th>Updated</th>
+                        <th width="100">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="n in 5" :key="'skeleton-' + n">
+                        <td>
+                            <div class="skeleton-row"></div>
+                        </td>
+                        <td>
+                            <div class="skeleton-row"></div>
+                        </td>
+                        <td>
+                            <div class="skeleton-row"></div>
+                        </td>
+                        <td>
+                            <div class="skeleton-row"></div>
+                        </td>
+                        <td>
+                            <div class="skeleton-row"></div>
+                        </td>
+                        <td>
+                            <div class="skeleton-row"></div>
+                        </td>
+                        <td>
+                            <div class="skeleton-row"></div>
+                        </td>
+                        <td>
+                            <div class="skeleton-row"></div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Main Table -->
+    <div v-else>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th width="50">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" :checked="allSelected"
+                                    @change="toggleSelectAll">
+                            </div>
+                        </th>
+                        <th>
+                            <span class="sortable-header" :class="getSortClass('title')" @click="sortTable('title')">
+                                Title
+                            </span>
+                        </th>
+                        <th>Content Preview</th>
+                        <th>
+                            <span class="sortable-header" :class="getSortClass('category')"
+                                @click="sortTable('category')">
+                                Category
+                            </span>
+                        </th>
+                        <th width="100">
+                            <span class="sortable-header" :class="getSortClass('attachments')"
+                                @click="sortTable('attachments')">
+                                <i class="fas fa-paperclip"></i>
+                            </span>
+                        </th>
+                        <th width="100">
+                            <span class="sortable-header" :class="getSortClass('likes')" @click="sortTable('likes')">
+                                <i class="fas fa-heart"></i>
+                            </span>
+                        </th>
+                        <th width="150">
+                            <span class="sortable-header" :class="getSortClass('updated_at')"
+                                @click="sortTable('updated_at')">
+                                Updated
+                            </span>
+                        </th>
+                        <th width="120">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% raw %}
+                    <TransitionGroup name="fade" tag="tbody">
+                        <tr v-for="note in filteredNotes" :key="note.id" @click="rowClick(note.id, $event)"
+                            :class="{ 'table-primary': isSelected(note.id) }">
+                            <td data-label="Select">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" :checked="isSelected(note.id)"
+                                        @click.stop @change="toggleNoteSelection(note.id)">
+                                </div>
+                            </td>
+                            <td data-label="Title" class="note-title-cell">
+                                <div class="d-flex align-items-center">
+                                    <span :class="getStatusIndicatorClass(note.updated_at)"></span>
+                                    <strong>{{ note.title }}</strong>
+                                </div>
+                            </td>
+                            <td data-label="Content" class="note-content-cell">
+                                <div class="note-content-preview">
+                                    {{ note.content_preview }}
+                                </div>
+                            </td>
+                            <td data-label="Category">
+                                <span class="category-badge-table" :style="{
+                                          'background-color': note.category.color || '#6c757d',
+                                          'color': 'white'
+                                      }">
+                                    {{ note.category.name }}
+                                </span>
+                            </td>
+                            <td data-label="Attachments" class="text-center">
+                                <span v-if="note.attachments_count > 0" class="badge bg-info rounded-pill">
+                                    <i class="fas fa-paperclip me-1"></i>
+                                    {{ note.attachments_count }}
+                                </span>
+                                <span v-else class="text-muted">-</span>
+                            </td>
+                            <td data-label="Likes" class="text-center">
+                                <button class="btn btn-sm btn-outline-danger" @click.stop="toggleLike(note)"
+                                    :title="note.likes_count + ' likes'">
+                                    <i class="fas fa-heart me-1"></i>
+                                    {{ note.likes_count }}
+                                </button>
+                            </td>
+                            <td data-label="Updated">
+                                <small class="text-muted">
+                                    {{ formatDate(note.updated_at) }}
+                                </small>
+                            </td>
+                            <td data-label="Actions" class="action-buttons">
+                                <a :href="'/notes/' + note.id" class="btn btn-sm btn-table-action btn-outline-primary"
+                                    title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a :href="'/notes/' + note.id + '/edit'"
+                                    class="btn btn-sm btn-table-action btn-outline-secondary" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button class="btn btn-sm btn-table-action btn-outline-danger"
+                                    @click.stop="confirmDelete(note)" title="Delete">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </TransitionGroup>
+                    {% endraw %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty State -->
+        <Transition name="fade">
+            <div v-if="filteredNotes.length === 0 && !loading" class="empty-state-table">
+                <div class="mb-3">
+                    <i class="fas fa-table fa-3x text-muted"></i>
+                </div>
+                <h4>No notes found</h4>
+                <p class="text-muted mb-3">
+                    <span v-if="hasActiveFilters">
+                        No notes match your current filters. Try adjusting your search criteria.
+                    </span>
+                    <span v-else>
+                        You haven't created any notes yet. Get started by creating your first note!
+                    </span>
+                </p>
+                <div class="mt-3">
+                    <a href="{{ url_for('notes.create_note') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-plus me-1"></i> Create Note
+                    </a>
+                    <button v-if="hasActiveFilters" class="btn btn-outline-secondary" @click="resetFilters">
+                        <i class="fas fa-redo me-1"></i> Reset Filters
+                    </button>
+                </div>
+            </div>
+        </Transition>
+
+        <!-- Pagination -->
+        <div v-if="notes.pages > 1 && filteredNotes.length > 0" class="mt-4">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="text-muted">
+                    Showing <span v-text="notes.items ? notes.items.length : filteredNotes.length"></span> of {{
+                    notes.total }} notes
+                </div>
+                <nav aria-label="Table pagination">
+                    <ul class="pagination mb-0">
+                        <li class="page-item" :class="{ disabled: !notes.has_prev }">
+                            <a class="page-link" href="#" @click.prevent="loadPage(notes.prev_num)">
+                                <i class="fas fa-chevron-left"></i>
+                            </a>
+                        </li>
+
+                        <li v-for="page in visiblePages" :key="page" class="page-item"
+                            :class="{ active: page === notes.page, disabled: page === '...' }">
+                            <a v-if="page !== '...'" class="page-link" href="#" @click.prevent="loadPage(page)">
+                                {{ page }}
+                            </a>
+                            <span v-else class="page-link">...</span>
+                        </li>
+
+                        <li class="page-item" :class="{ disabled: !notes.has_next }">
+                            <a class="page-link" href="#" @click.prevent="loadPage(notes.next_num)">
+                                <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete "<strong>{{ noteToDelete.title if noteToDelete else ''
+                            }}</strong>"?</p>
+                    <p class="text-danger"><small>This action cannot be undone.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" @click="deleteNote">
+                        Delete Note
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Modal -->
+    <div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Bulk Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete <strong><span v-text="selectedNotes.length"></span></strong>
+                        selected note(s)?</p>
+                    <div v-if="selectedNotes.length <= 5" class="mt-3">
+                        <p class="mb-1"><strong>Notes to be deleted:</strong></p>
+                        <ul class="small">
+                            <li v-for="noteId in selectedNotes" :key="noteId">
+                                {{ '{' }}{{ '{' }} getNoteById(noteId)?.title {{ '}' }}{{ '}' }}
+                            </li>
+                        </ul>
+                    </div>
+                    <p class="text-danger mt-3"><small>This action cannot be undone.</small></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" @click="bulkDelete">
+                        Delete <span v-text="selectedNotes.length"></span> Note(s)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, computed, watch, onMounted } = Vue;
+
+    createApp({
+        setup() {
+            // Data
+            const notes = ref({{ notes|tojson|safe }});
+            const categories = ref({{ categories|tojson|safe }});
+            const searchQuery = ref("");
+            const selectedCategory = ref("");
+            const sortBy = ref("updated_at");
+            const sortDirection = ref("desc");
+            const loading = ref(false);
+            const noteToDelete = ref(null);
+            const selectedNotes = ref([]);
+            const toggleFilters = ref(false);
+            const dateRange = ref('');
+            const hasAttachments = ref('');
+            const hasLikes = ref('');
+            const itemsPerPage = ref('25');
+
+            // Computed properties
+            const filteredNotes = computed(() => {
+                let filtered = Array.isArray(notes.value) ? [...notes.value] : [...notes.value.items];
+
+                // Filter by search query
+                if (searchQuery.value) {
+                    const query = searchQuery.value.toLowerCase();
+                    filtered = filtered.filter(note =>
+                        note.title.toLowerCase().includes(query) ||
+                        note.content.toLowerCase().includes(query)
+                    );
+                }
+
+                // Filter by category
+                if (selectedCategory.value) {
+                    filtered = filtered.filter(note =>
+                        note.category_id == selectedCategory.value
+                    );
+                }
+
+                // Filter by date range
+                if (dateRange.value) {
+                    const now = new Date();
+                    let startDate = new Date();
+
+                    switch (dateRange.value) {
+                        case 'today':
+                            startDate.setHours(0, 0, 0, 0);
+                            break;
+                        case 'week':
+                            startDate.setDate(now.getDate() - 7);
+                            break;
+                        case 'month':
+                            startDate.setMonth(now.getMonth() - 1);
+                            break;
+                        case 'year':
+                            startDate.setFullYear(now.getFullYear() - 1);
+                            break;
+                    }
+
+                    filtered = filtered.filter(note =>
+                        new Date(note.updated_at) >= startDate
+                    );
+                }
+
+                // Filter by attachments
+                if (hasAttachments.value === 'yes') {
+                    filtered = filtered.filter(note => note.attachments_count > 0);
+                } else if (hasAttachments.value === 'no') {
+                    filtered = filtered.filter(note => note.attachments_count === 0);
+                }
+
+                // Filter by likes
+                if (hasLikes.value === 'yes') {
+                    filtered = filtered.filter(note => note.likes_count > 0);
+                } else if (hasLikes.value === 'no') {
+                    filtered = filtered.filter(note => note.likes_count === 0);
+                }
+
+                // Sort notes
+                filtered.sort((a, b) => {
+                    let aValue, bValue;
+
+                    switch (sortBy.value) {
+                        case 'title':
+                            aValue = a.title.toLowerCase();
+                            bValue = b.title.toLowerCase();
+                            break;
+                        case 'category':
+                            aValue = a.category.name.toLowerCase();
+                            bValue = b.category.name.toLowerCase();
+                            break;
+                        case 'attachments':
+                            aValue = a.attachments_count || 0;
+                            bValue = b.attachments_count || 0;
+                            break;
+                        case 'likes':
+                            aValue = a.likes_count || 0;
+                            bValue = b.likes_count || 0;
+                            break;
+                        case 'created_at':
+                            aValue = new Date(a.created_at);
+                            bValue = new Date(b.created_at);
+                            break;
+                        case 'updated_at':
+                        default:
+                            aValue = new Date(a.updated_at);
+                            bValue = new Date(b.updated_at);
+                            break;
+                    }
+
+                    if (sortDirection.value === 'asc') {
+                        return aValue > bValue ? 1 : -1;
+                    } else {
+                        return aValue < bValue ? 1 : -1;
+                    }
+                });
+
+                return filtered;
+            });
+
+            const allSelected = computed(() => {
+                return filteredNotes.value.length > 0 &&
+                    selectedNotes.value.length === filteredNotes.value.length;
+            });
+
+            const hasActiveFilters = computed(() => {
+                return searchQuery.value || selectedCategory.value || dateRange.value ||
+                    hasAttachments.value || hasLikes.value;
+            });
+
+            const visiblePages = computed(() => {
+                if (!notes.value.pages) return [];
+                const total = notes.value.pages;
+                const current = notes.value.page;
+                const pages = [];
+
+                // Always show first page
+                pages.push(1);
+
+                // Calculate range around current page
+                let start = Math.max(2, current - 1);
+                let end = Math.min(total - 1, current + 1);
+
+                // Adjust if near edges
+                if (current <= 2) end = Math.min(3, total - 1);
+                if (current >= total - 1) start = Math.max(total - 2, 2);
+
+                // Add ellipsis if needed
+                if (start > 2) pages.push('...');
+
+                // Add middle pages
+                for (let i = start; i <= end; i++) {
+                    pages.push(i);
+                }
+
+                // Add ellipsis if needed
+                if (end < total - 1) pages.push('...');
+
+                // Always show last page if not first
+                if (total > 1) pages.push(total);
+
+                return pages;
+            });
+
+            // Methods
+            const formatDate = (dateString) => {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            };
+
+            const getStatusIndicatorClass = (updatedAt) => {
+                const now = new Date();
+                const updated = new Date(updatedAt);
+                const diffHours = (now - updated) / (1000 * 60 * 60);
+
+                if (diffHours < 24) return 'status-indicator status-new';
+                if (diffHours < 168) return 'status-indicator status-recent'; // 7 days
+                return 'status-indicator status-old';
+            };
+
+            const getSortClass = (column) => {
+                if (sortBy.value !== column) return 'sortable-header';
+                return `sortable-header sort-${sortDirection.value}`;
+            };
+
+            const sortTable = (column) => {
+                if (sortBy.value === column) {
+                    // Toggle direction
+                    sortDirection.value = sortDirection.value === 'asc' ? 'desc' : 'asc';
+                } else {
+                    // Set new column with default direction
+                    sortBy.value = column;
+                    sortDirection.value = 'desc';
+                }
+            };
+
+            const rowClick = (noteId, event) => {
+                // Don't trigger if clicking on checkbox or action button
+                if (event.target.tagName === 'INPUT' ||
+                    event.target.closest('button') ||
+                    event.target.closest('a')) {
+                    return;
+                }
+
+                window.location.href = `/notes/${noteId}`;
+            };
+
+            const isSelected = (noteId) => {
+                return selectedNotes.value.includes(noteId);
+            };
+
+            const toggleNoteSelection = (noteId) => {
+                const index = selectedNotes.value.indexOf(noteId);
+                if (index === -1) {
+                    selectedNotes.value.push(noteId);
+                } else {
+                    selectedNotes.value.splice(index, 1);
+                }
+            };
+
+            const toggleSelectAll = () => {
+                if (allSelected.value) {
+                    selectedNotes.value = [];
+                } else {
+                    selectedNotes.value = filteredNotes.value.map(note => note.id);
+                }
+            };
+
+            const clearSelection = () => {
+                selectedNotes.value = [];
+            };
+
+            const getNoteById = (noteId) => {
+                const allNotes = Array.isArray(notes.value) ? notes.value : notes.value.items;
+                return allNotes.find(note => note.id === noteId);
+            };
+
+            const confirmDelete = (note) => {
+                noteToDelete.value = note;
+                const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+                modal.show();
+            };
+
+            const deleteNote = async () => {
+                if (!noteToDelete.value) return;
+
+                try {
+                    const response = await fetch(`/notes/${noteToDelete.value.id}/delete`, {
+                        method: 'POST',
+                    });
+
+                    if (response.ok) {
+                        // Remove note from list
+                        if (Array.isArray(notes.value)) {
+                            notes.value = notes.value.filter(n => n.id !== noteToDelete.value.id);
+                        } else {
+                            notes.value.items = notes.value.items.filter(n => n.id !== noteToDelete.value.id);
+                            notes.value.total -= 1;
+                        }
+
+                        // Remove from selection if it was selected
+                        const index = selectedNotes.value.indexOf(noteToDelete.value.id);
+                        if (index !== -1) {
+                            selectedNotes.value.splice(index, 1);
+                        }
+
+                        // Close modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+                        modal.hide();
+
+                        // Show success message
+                        showFlash('Note deleted successfully!', 'success');
+                    }
+                } catch (error) {
+                    console.error('Error deleting note:', error);
+                    showFlash('Error deleting note', 'error');
+                }
+            };
+
+            const confirmBulkDelete = () => {
+                if (selectedNotes.value.length === 0) return;
+                const modal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+                modal.show();
+            };
+
+            const bulkDelete = async () => {
+                if (selectedNotes.value.length === 0) return;
+
+                try {
+                    const deletePromises = selectedNotes.value.map(noteId =>
+                        fetch(`/notes/${noteId}/delete`, { method: 'POST' })
+                    );
+
+                    const results = await Promise.allSettled(deletePromises);
+
+                    // Check results
+                    const successfulDeletes = results.filter(r => r.status === 'fulfilled' && r.value.ok);
+
+                    if (successfulDeletes.length > 0) {
+                        // Remove deleted notes from the list
+                        const deletedIds = selectedNotes.value;
+
+                        if (Array.isArray(notes.value)) {
+                            notes.value = notes.value.filter(n => !deletedIds.includes(n.id));
+                        } else {
+                            notes.value.items = notes.value.items.filter(n => !deletedIds.includes(n.id));
+                            notes.value.total -= deletedIds.length;
+                        }
+
+                        // Clear selection
+                        selectedNotes.value = [];
+
+                        // Close modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal'));
+                        modal.hide();
+
+                        // Show success message
+                        showFlash(`${successfulDeletes.length} note(s) deleted successfully!`, 'success');
+                    }
+                } catch (error) {
+                    console.error('Error in bulk delete:', error);
+                    showFlash('Error deleting notes', 'error');
+                }
+            };
+
+            const toggleLike = async (note) => {
+                try {
+                    const response = await fetch(`/notes/${note.id}/like`, {
+                        method: 'POST',
+                    });
+
+                    if (response.ok) {
+                        // Update likes count
+                        if (!note.likes_count) note.likes_count = 0;
+                        note.likes_count += 1;
+                    }
+                } catch (error) {
+                    console.error('Error liking note:', error);
+                }
+            };
+
+            const loadPage = async (page) => {
+                if (!page || loading.value) return;
+
+                loading.value = true;
+                try {
+                    const response = await fetch(`/notes/table?page=${page}&format=json`);
+                    const data = await response.json();
+                    notes.value = data;
+                } catch (error) {
+                    console.error('Error loading page:', error);
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            const applyFilters = () => {
+                // Force reactive update
+                const query = searchQuery.value;
+                searchQuery.value = '';
+                setTimeout(() => searchQuery.value = query, 0);
+            };
+
+            const resetFilters = () => {
+                searchQuery.value = '';
+                selectedCategory.value = '';
+                dateRange.value = '';
+                hasAttachments.value = '';
+                hasLikes.value = '';
+                sortBy.value = 'updated_at';
+                sortDirection.value = 'desc';
+            };
+
+            const changeItemsPerPage = () => {
+                // In a real app, this would reload with new per_page
+                showFlash(`Displaying ${itemsPerPage.value} items per page`, 'info');
+            };
+
+            const exportTable = () => {
+                // Simple CSV export
+                const headers = ['Title', 'Content', 'Category', 'Attachments', 'Likes', 'Updated'];
+                const csvData = filteredNotes.value.map(note => [
+                    `"${note.title.replace(/"/g, '""')}"`,
+                    `"${note.content.substring(0, 200).replace(/"/g, '""')}"`,
+                    note.category.name,
+                    note.attachments_count,
+                    note.likes_count,
+                    formatDate(note.updated_at)
+                ]);
+
+                const csvContent = [
+                    headers.join(','),
+                    ...csvData.map(row => row.join(','))
+                ].join('\n');
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+
+                link.setAttribute('href', url);
+                link.setAttribute('download', `notes_export_${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = 'hidden';
+
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+
+                showFlash('Table exported to CSV', 'success');
+            };
+
+            const showFlash = (message, type) => {
+                const alert = document.createElement('div');
+                alert.className = `alert alert-${type} alert-dismissible fade show`;
+                alert.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+                const container = document.querySelector('.flash-messages');
+                container.appendChild(alert);
+
+                setTimeout(() => {
+                    alert.classList.remove('show');
+                    setTimeout(() => alert.remove(), 150);
+                }, 3000);
+            };
+
+            // Debounced search
+            let searchTimeout = null;
+            const debouncedSearch = () => {
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    applyFilters();
+                }, 500);
+            };
+
+            // Lifecycle
+            onMounted(() => {
+                // Initialize tooltips if needed
+                if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+                    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+                    tooltipTriggerList.map(function (tooltipTriggerEl) {
+                        return new bootstrap.Tooltip(tooltipTriggerEl);
+                    });
+                }
+
+                // Load from URL params if present
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.has('category')) {
+                    selectedCategory.value = urlParams.get('category');
+                }
+                if (urlParams.has('search')) {
+                    searchQuery.value = urlParams.get('search');
+                }
+            });
+
+            return {
+                notes,
+                categories,
+                searchQuery,
+                selectedCategory,
+                sortBy,
+                sortDirection,
+                loading,
+                noteToDelete,
+                selectedNotes,
+                toggleFilters,
+                dateRange,
+                hasAttachments,
+                hasLikes,
+                itemsPerPage,
+                filteredNotes,
+                allSelected,
+                hasActiveFilters,
+                visiblePages,
+                formatDate,
+                getStatusIndicatorClass,
+                getSortClass,
+                sortTable,
+                rowClick,
+                isSelected,
+                toggleNoteSelection,
+                toggleSelectAll,
+                clearSelection,
+                getNoteById,
+                confirmDelete,
+                deleteNote,
+                confirmBulkDelete,
+                bulkDelete,
+                toggleLike,
+                loadPage,
+                applyFilters,
+                resetFilters,
+                changeItemsPerPage,
+                exportTable,
+                debouncedSearch
+            };
+        }
+    }).mount('#app');
+</script>
+{% endblock %}

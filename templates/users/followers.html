@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Seguidores de {{ user.username }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex align-items-center mb-4">
+                <a href="{{ url_for('users.user_profile', user_id=user.id) }}" 
+                   class="btn btn-outline-secondary me-3">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <div>
+                    <h2>Seguidores de {{ user.username }}</h2>
+                    <p class="text-muted mb-0">{{ followers.total }} seguidores</p>
+                </div>
+            </div>
+
+            <!-- Lista de seguidores -->
+            {% if followers.items %}
+                <div class="row">
+                    {% for follower in followers.items %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <div class="d-flex align-items-center">
+                                    <!-- Avatar -->
+                                    <div class="me-3">
+                                        {% if follower.profile_pic %}
+                                            <img src="{{ url_for('static', filename='uploads/' + follower.profile_pic) }}" 
+                                                 class="rounded-circle" width="50" height="50" alt="{{ follower.username }}">
+                                        {% else %}
+                                            <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" 
+                                                 style="width: 50px; height: 50px;">
+                                                <i class="fas fa-user text-white"></i>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Info -->
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ follower.username }}</h6>
+                                        {% if follower.bio %}
+                                            <p class="text-muted small mb-1">{{ follower.bio[:50] }}{% if follower.bio|length > 50 %}...{% endif %}</p>
+                                        {% endif %}
+                                        <small class="text-muted">
+                                            {{ follower.get_followers_count() }} seguidores
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Botones -->
+                                    <div class="ms-2">
+                                        <a href="{{ url_for('users.user_profile', user_id=follower.id) }}" 
+                                           class="btn btn-sm btn-outline-primary">
+                                            Ver
+                                        </a>
+                                        {% if follower.id != current_user.id %}
+                                            {% if current_user.is_following(follower) %}
+                                                <button class="btn btn-sm btn-success follow-btn ms-1" 
+                                                        data-user-id="{{ follower.id }}" data-action="unfollow">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                            {% else %}
+                                                <button class="btn btn-sm btn-primary follow-btn ms-1" 
+                                                        data-user-id="{{ follower.id }}" data-action="follow">
+                                                    <i class="fas fa-plus"></i>
+                                                </button>
+                                            {% endif %}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- Paginación -->
+                {% if followers.pages > 1 %}
+                <nav aria-label="Paginación de seguidores">
+                    <ul class="pagination justify-content-center">
+                        {% if followers.has_prev %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('users.user_followers', user_id=user.id, page=followers.prev_num) }}">Anterior</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for page_num in followers.iter_pages() %}
+                            {% if page_num %}
+                                {% if page_num != followers.page %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="{{ url_for('users.user_followers', user_id=user.id, page=page_num) }}">{{ page_num }}</a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ page_num }}</span>
+                                    </li>
+                                {% endif %}
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">…</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if followers.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('users.user_followers', user_id=user.id, page=followers.next_num) }}">Siguiente</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">{{ user.username }} aún no tiene seguidores</h5>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Manejar botones de seguir/dejar de seguir
+    document.querySelectorAll('.follow-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const userId = this.dataset.userId;
+            const action = this.dataset.action;
+            const url = `/api/users/${userId}/${action}`;
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Cambiar el botón
+                    if (action === 'follow') {
+                        this.innerHTML = '<i class="fas fa-check"></i>';
+                        this.className = 'btn btn-sm btn-success follow-btn ms-1';
+                        this.dataset.action = 'unfollow';
+                    } else {
+                        this.innerHTML = '<i class="fas fa-plus"></i>';
+                        this.className = 'btn btn-sm btn-primary follow-btn ms-1';
+                        this.dataset.action = 'follow';
+                    }
+                    
+                    showToast(data.message, 'success');
+                } else {
+                    showToast(data.error, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Error al procesar la solicitud', 'error');
+            });
+        });
+    });
+});
+
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.remove();
+        }
+    }, 3000);
+}
+</script>
+{% endblock %}

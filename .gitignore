@@ -1,0 +1,50 @@
+# Python
+venv/
+.env
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
+notes.db
+
+# Uploads (optional - you might want to keep these or not)
+# uploads/
+
+# IDE/Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# System
+.DS_Store
+
+# Logs
+*.log
+
+# Test output
+.coverage
+.htmlcov/
+
+# Build output
+build/
+dist/
+*.egg-info/
+
+# Jupyter notebook
+.ipynb_checkpoints/
+
+# Flask stuff
+instance/
+
+# Python cache
+.pytest_cache/
+
+# Environment variables
+.env.local
+.env*.local
+
+# OS generated files
+.ehthumbs.db
+.Thumbs.db

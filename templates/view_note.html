@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}{{ note.title }} - Ver Nota{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-lg-8 offset-lg-2">
+            <!-- Nota principal -->
+            <div class="card mb-4">
+                <!-- Header con autor -->
+                <div class="card-header bg-white border-bottom">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            {% if note.author.profile_pic %}
+                                <img src="{{ url_for('static', filename='uploads/' + note.author.profile_pic) }}" 
+                                     class="rounded-circle me-3" width="50" height="50">
+                            {% else %}
+                                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                     style="width: 50px; height: 50px;">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                            {% endif %}
+                            <div>
+                                <h6 class="mb-0">
+                                    <a href="{{ url_for('users.user_profile', user_id=note.author.id) }}" 
+                                       class="text-decoration-none">{{ note.author.username }}</a>
+                                </h6>
+                                <small class="text-muted">{{ note.created_at.strftime('%d de %B de %Y a las %H:%M') }}</small>
+                            </div>
+                        </div>
+                        <div>
+                            <span class="badge" style="background-color: {{ note.category.color }};">
+                                <i class="{{ note.category.icon }}"></i> {{ note.category.name }}
+                            </span>
+                            {% if note.is_public %}
+                                <span class="badge bg-success ms-1">
+                                    <i class="fas fa-globe"></i> Público
+                                </span>
+                            {% else %}
+                                <span class="badge bg-secondary ms-1">
+                                    <i class="fas fa-lock"></i> Privado
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contenido de la nota -->
+                <div class="card-body">
+                    <h2 class="mb-3">{{ note.title }}</h2>
+                    <div class="mb-4">
+                        <p class="card-text" style="white-space: pre-wrap; line-height: 1.6;">{{ note.content }}</p>
+                    </div>
+
+                    <!-- Attachments -->
+                    {% if note.attachments %}
+                    <div class="mb-4">
+                        <h5><i class="fas fa-paperclip"></i> Archivos Adjuntos</h5>
+                        <div class="row">
+                            {% for attachment in note.attachments %}
+                            <div class="col-md-4 col-lg-3 mb-3">
+                                <div class="card">
+                                    {% if attachment.file_type.startswith('image/') %}
+                                    <img src="{{ url_for('notes.download_file', filename=attachment.filename) }}"
+                                        class="card-img-top" style="height: 150px; object-fit: cover;" alt="{{ attachment.filename }}">
+                                    {% else %}
+                                    <div class="card-body text-center py-4">
+                                        <i class="fas fa-file fa-3x text-muted"></i>
+                                        <p class="card-text small mt-2">{{ attachment.filename }}</p>
+                                    </div>
+                                    {% endif %}
+                                    <div class="card-footer bg-light p-2">
+                                        <div class="d-flex justify-content-between">
+                                            <a href="{{ url_for('notes.download_file', filename=attachment.filename) }}"
+                                                class="btn btn-sm btn-outline-primary" download>
+                                                <i class="fas fa-download"></i>
+                                            </a>
+                                            {% if note.author == current_user %}
+                                            <form action="{{ url_for('notes.delete_attachment', note_id=note.id, attachment_id=attachment.id) }}"
+                                                method="POST" onsubmit="return confirm('¿Eliminar este archivo?');" class="d-inline">
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Stats -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="text-muted small">
+                            <i class="fas fa-eye"></i> {{ note.view_count }} visualizaciones
+                            {% if note.updated_at != note.created_at %}
+                                • <i class="fas fa-edit"></i> Editado {{ note.updated_at.strftime('%d/%m/%Y') }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acciones sociales -->
+                <div class="card-footer bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex gap-3">
+                            <!-- Like button -->
+                            <button class="btn btn-outline-danger like-btn" 
+                                    data-note-id="{{ note.id }}" 
+                                    data-liked="{{ 'true' if note.is_liked_by(current_user) else 'false' }}">
+                                <i class="fas fa-heart"></i> 
+                                <span class="likes-count">{{ note.likes|length }}</span>
+                            </button>
+                            
+                            <!-- Comment button -->
+                            <button class="btn btn-outline-primary" onclick="toggleComments()">
+                                <i class="fas fa-comment"></i> 
+                                <span class="comments-count">{{ note.comments|length }}</span>
+                            </button>
+                            
+                            <!-- Share button -->
+                            <button class="btn btn-outline-secondary" onclick="shareNote()">
+                                <i class="fas fa-share"></i> Compartir
+                            </button>
+                        </div>
+                        
+                        <!-- Edit/Delete buttons (only for author) -->
+                        {% if note.author == current_user %}
+                        <div>
+                            <a href="{{ url_for('notes.edit_note', note_id=note.id) }}" class="btn btn-outline-secondary btn-sm">
+                                <i class="fas fa-edit"></i> Editar
+                            </a>
+                            <form action="{{ url_for('notes.delete_note', note_id=note.id) }}" method="POST" 
+                                  onsubmit="return confirm('¿Estás seguro de eliminar esta nota?');" class="d-inline">
+                                <button type="submit" class="btn btn-outline-danger btn-sm">
+                                    <i class="fas fa-trash"></i> Eliminar
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sección de comentarios -->
+            <div class="card" id="comments-section" style="display: none;">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-comments"></i> Comentarios</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Formulario para nuevo comentario -->
+                    <div class="mb-4">
+                        <div class="d-flex">
+                            {% if current_user.profile_pic %}
+                                <img src="{{ url_for('static', filename='uploads/' + current_user.profile_pic) }}" 
+                                     class="rounded-circle me-3" width="40" height="40">
+                            {% else %}
+                                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center me-3" 
+                                     style="width: 40px; height: 40px;">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                            {% endif %}
+                            <div class="flex-grow-1">
+                                <textarea class="form-control" id="comment-input" rows="3" 
+                                          placeholder="Escribe un comentario..."></textarea>
+                                <div class="mt-2">
+                                    <button class="btn btn-primary btn-sm" onclick="submitComment()">
+                                        <i class="fas fa-paper-plane"></i> Comentar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista de comentarios -->
+                    <div id="comments-list">
+                        <!-- Los comentarios se cargarán aquí via JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navegación -->
+            <div class="mt-4 text-center">
+                <a href="{{ url_for('notes.notes_table') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-arrow-left"></i> Volver a Mis Notas
+                </a>
+                <a href="{{ url_for('feed.discovery_feed') }}" class="btn btn-outline-primary ms-2">
+                    <i class="fas fa-home"></i> Ir al Feed
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let commentsVisible = false;
+
+// Toggle like
+document.querySelector('.like-btn').addEventListener('click', function() {
+    const noteId = this.dataset.noteId;
+    const liked = this.dataset.liked === 'true';
+    
+    fetch(`/api/notes/${noteId}/like`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            this.dataset.liked = data.liked.toString();
+            this.querySelector('.likes-count').textContent = data.likes_count;
+            
+            if (data.liked) {
+                this.classList.remove('btn-outline-danger');
+                this.classList.add('btn-danger');
+            } else {
+                this.classList.remove('btn-danger');
+                this.classList.add('btn-outline-danger');
+            }
+            
+            showToast(data.message, 'success');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error al procesar like', 'error');
+    });
+});
+
+// Toggle comments section
+function toggleComments() {
+    const section = document.getElementById('comments-section');
+    if (commentsVisible) {
+        section.style.display = 'none';
+        commentsVisible = false;
+    } else {
+        section.style.display = 'block';
+        commentsVisible = true;
+        loadComments();
+    }
+}
+
+// Load comments
+function loadComments() {
+    const noteId = parseInt('{{ note.id }}');
+    
+    fetch(`/api/notes/${noteId}/comments`)
+    .then(response => response.json())
+    .then(data => {
+        displayComments(data.comments);
+    })
+    .catch(error => {
+        console.error('Error loading comments:', error);
+    });
+}
+
+// Display comments
+function displayComments(comments) {
+    const container = document.getElementById('comments-list');
+    container.innerHTML = '';
+    
+    if (comments.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No hay comentarios aún. ¡Sé el primero en comentar!</p>';
+        return;
+    }
+    
+    comments.forEach(comment => {
+        const commentHtml = `
+            <div class="comment mb-3 p-3 border rounded">
+                <div class="d-flex">
+                    <div class="me-3">
+                        ${comment.author.profile_pic ? 
+                            `<img src="/static/uploads/${comment.author.profile_pic}" class="rounded-circle" width="40" height="40">` :
+                            `<div class="bg-secondary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="fas fa-user text-white"></i>
+                            </div>`
+                        }
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <h6 class="mb-1">${comment.author.username}</h6>
+                            <small class="text-muted">${new Date(comment.created_at).toLocaleDateString()}</small>
+                        </div>
+                        <p class="mb-2">${comment.content}</p>
+                        ${comment.replies_count > 0 ? 
+                            `<button class="btn btn-sm btn-outline-primary" onclick="loadReplies(${comment.id})">
+                                Ver ${comment.replies_count} respuestas
+                            </button>` : ''
+                        }
+                        <button class="btn btn-sm btn-link text-muted" onclick="replyToComment(${comment.id})">
+                            Responder
+                        </button>
+                    </div>
+                </div>
+                <div id="replies-${comment.id}" class="ms-5 mt-2" style="display: none;"></div>
+            </div>
+        `;
+        container.innerHTML += commentHtml;
+    });
+}
+
+// Submit comment
+function submitComment(parentId = null) {
+    const input = document.getElementById('comment-input');
+    const content = input.value.trim();
+    
+    if (!content) {
+        showToast('El comentario no puede estar vacío', 'error');
+        return;
+    }
+    
+    const noteId = parseInt('{{ note.id }}');
+    
+    fetch(`/api/notes/${noteId}/comments`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            content: content,
+            parent_id: parentId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            input.value = '';
+            loadComments();
+            
+            // Update comment count
+            document.querySelector('.comments-count').textContent = 
+                parseInt(document.querySelector('.comments-count').textContent) + 1;
+            
+            showToast(data.message, 'success');
+        } else {
+            showToast(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error al enviar comentario', 'error');
+    });
+}
+
+// Share note
+function shareNote() {
+    const url = window.location.href;
+    if (navigator.share) {
+        navigator.share({
+            title: '{{ note.title }}',
+            text: '{{ note.content[:100] }}...',
+            url: url
+        });
+    } else {
+        navigator.clipboard.writeText(url).then(() => {
+            showToast('Enlace copiado al portapapeles', 'success');
+        });
+    }
+}
+
+// Toast notifications
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} position-fixed`;
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentElement) {
+            toast.remove();
+        }
+    }, 3000);
+}
+
+// Initialize like button state
+document.addEventListener('DOMContentLoaded', function() {
+    const likeBtn = document.querySelector('.like-btn');
+    if (likeBtn.dataset.liked === 'true') {
+        likeBtn.classList.remove('btn-outline-danger');
+        likeBtn.classList.add('btn-danger');
+    }
+});
+</script>
+{% endblock %}

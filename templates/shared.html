@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Compartido Conmigo{% endblock %}
+
+{% block content %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h2 class="fw-bold mb-4"><i class="fas fa-user-friends text-primary me-2"></i>Compartido Conmigo</h2>
+
+        {% if not notes %}
+        <div class="card p-5 text-center border-0 shadow-sm rounded-4">
+            <i class="fas fa-share-alt fa-3x text-light mb-3"></i>
+            <p class="text-muted">Nadie ha compartido conocimiento contigo todavía.</p>
+        </div>
+        {% else %}
+        <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {% for note in notes %}
+            <div class="col">
+                <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center mb-3">
+                            <img src="https://ui-avatars.com/api/?name={{ note.author.username }}&background=random"
+                                width="30" height="30" class="rounded-circle me-2">
+                            <span class="small text-muted">{{ note.author.username }}</span>
+                        </div>
+                        <h5 class="card-title fw-bold">{{ note.title }}</h5>
+                        <p class="card-text text-muted small">{{ note.content[:100] }}...</p>
+                        <a href="{{ url_for('notes.view_note', note_id=note.id) }}"
+                            class="btn btn-outline-primary btn-sm rounded-pill w-100 mt-2">Ver Nota</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
