@@ -96,7 +96,42 @@ Edit the `.env` file to customize:
 
 ## Database
 
-The application uses SQLite by default. The database file `notes.db` will be created automatically in the project root.
+The application uses SQLite by default. There are a few safe ways to prepare a database for local development or for including a "schema-only" DB in the repository:
+
+- Create an application database (local, with tables):
+
+```bash
+# Running the app will create `notes.db` in the project root if it doesn't exist
+python app.py
+```
+
+- Create a repository-friendly empty database that contains only the schema (recommended if you want to commit a DB file):
+
+```bash
+# This project includes a helper script that creates `empty_notes.db` (schema only)
+python3 create_empty_db.py
+```
+
+- Use Flask-Migrate (recommended for schema evolution):
+
+```bash
+export FLASK_APP=manage.py
+flask db upgrade
+```
+
+Notes and security:
+- `notes.db` (the full local DB) is listed in `.gitignore` and should not be committed if it contains real user data (emails, password hashes, uploads).
+- If you need to share a DB file in the repo, prefer `empty_notes.db` (schema only) or a sanitized example database (remove or anonymize `user.email` and `user.password_hash`).
+- To generate a sanitized copy manually:
+
+```bash
+# create a copy
+cp notes.db notes_sanitized.db
+# remove sensitive columns (example using sqlite3 CLI)
+sqlite3 notes_sanitized.db "UPDATE user SET email=NULL, password_hash=NULL; VACUUM;"
+```
+
+If you want, this repository already contains `create_empty_db.py` which creates `empty_notes.db` with the current schema and no user data.
 
 ## Screenshots
 
